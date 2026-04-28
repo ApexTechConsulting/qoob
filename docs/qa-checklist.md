@@ -22,6 +22,8 @@
 
 - Confirm the player starts facing the giant Qoob.
 - Confirm the Qoob is roughly 100 feet ahead, hovering just above the ground.
+- Confirm a low phasing Qoob hum is audible on the title screen and louder during gameplay.
+- Confirm the ground maze is visible as glowing paths with arrows and movement glyphs.
 - Confirm the Qoob remains centered or nearly centered after every movement.
 - Confirm there is no mouse-look and no continuous free-roam movement.
 - Confirm `W`, `A`, `S`, `D` movement works.
@@ -49,4 +51,3 @@
 - Confirm `dist/Qoob-mac.zip` exists after packaging.
 - Confirm the exported app opens on macOS.
 - Confirm the app can be kept in the Dock using Dock `Options > Keep in Dock`.
-

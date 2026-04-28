@@ -48,14 +48,16 @@ function writeWav(filename, durationSeconds, sampleFn) {
   writeFileSync(join(outDir, filename), buffer);
 }
 
-writeWav("qoob_hum.wav", 6.0, (t) => {
-  const phase = Math.sin(2 * Math.PI * 0.5 * t) * 0.18;
-  const low = Math.sin(2 * Math.PI * 55 * t + phase);
-  const detuned = Math.sin(2 * Math.PI * 58 * t - phase * 0.7);
-  const sub = Math.sin(2 * Math.PI * 27.5 * t);
-  const texture = Math.sin(2 * Math.PI * (91 + Math.sin(t * 1.3) * 4) * t) * 0.12;
-  const envelope = 0.82 + Math.sin(2 * Math.PI * 0.333333 * t) * 0.08;
-  return (low * 0.34 + detuned * 0.24 + sub * 0.26 + texture) * envelope * 0.54;
+writeWav("qoob_hum.wav", 8.0, (t) => {
+  const phase = Math.sin(2 * Math.PI * 0.25 * t) * 0.32;
+  const sub = Math.sin(2 * Math.PI * 36 * t + phase * 0.7);
+  const low = Math.sin(2 * Math.PI * 72 * t - phase);
+  const throat = Math.sin(2 * Math.PI * (109 + Math.sin(t * 0.9) * 5) * t + Math.sin(t * 2.1));
+  const formant = Math.sin(2 * Math.PI * (218 + Math.sin(t * 1.3) * 12) * t) * 0.18;
+  const glass = Math.sin(2 * Math.PI * (436 + Math.sin(t * 0.8) * 18) * t) * 0.08;
+  const breath = randomSigned() * 0.025;
+  const envelope = 0.9 + Math.sin(2 * Math.PI * 0.125 * t) * 0.08;
+  return (sub * 0.28 + low * 0.32 + throat * 0.3 + formant + glass + breath) * envelope * 0.72;
 });
 
 writeWav("wrong_screech.wav", 0.82, (t) => {
@@ -92,4 +94,3 @@ writeWav("success_chime.wav", 1.15, (t) => {
 });
 
 console.log("Generated original procedural Qoob audio assets.");
-

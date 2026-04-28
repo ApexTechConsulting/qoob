@@ -2,7 +2,9 @@
 
 Qoob is a short first-person atmospheric puzzle game built in Godot 4 for macOS.
 
-You begin in a barren ritual space facing the Qoob: a huge hovering alien cube about 100 feet ahead. The cube pulses, hums, watches, and punishes wrong movement. There is one level, one invisible movement-sequence maze, and exactly four valid paths to reach the Qoob.
+You begin in a black ritual void facing the Qoob: a huge hovering alien cube about 100 feet ahead. The cube pulses, hums, watches, and punishes wrong movement. There is one level, one deterministic movement-sequence maze, and exactly four valid paths to reach the Qoob.
+
+The current art pass uses luminous white spectral geometry, prismatic fringes, particle ribbons, and glowing ground traces inspired by abstract light-capture imagery. The maze is visible on the ground for playtesting: each valid route is drawn as a glowing path with arrows and move glyphs.
 
 ## Gameplay
 
@@ -13,7 +15,7 @@ Qoob is not a free-look FPS. Movement is deliberate and step-based. Every input 
 - `L` means strafe left in an orbit around the Qoob.
 - `R` means strafe right in an orbit around the Qoob.
 
-The camera always faces the Qoob. Wrong moves reset the player to the start and increase the mistake counter. The first and second wrong moves show `Qoob hates that`. The third wrong move triggers lightning, `Qoob says: That was foolish.`, and Game Over. Reaching the Qoob shows a happy face and `Nice!`, then resets the session.
+The camera always faces the Qoob while tilting low enough to keep the ground maze readable. Wrong moves reset the player to the start and increase the mistake counter. The first and second wrong moves show `Qoob hates that`. The third wrong move triggers lightning, `Qoob says: That was foolish.`, and Game Over. Reaching the Qoob shows a happy face and `Nice!`, then resets the session.
 
 The four solution paths are documented with spoiler warnings in [docs/maze-design.md](docs/maze-design.md).
 
@@ -103,6 +105,6 @@ All committed art and audio are original, procedural, or MVP placeholders genera
 ## Known Limitations
 
 - The app is exported unsigned and unnotarized for local testing.
-- The environment art is intentionally compact MVP procedural art.
+- The visible ground maze intentionally reveals the route layout for playtesting.
 - There is no mouse-look or free-roam movement by design.
 - The current audio is procedural and final enough for MVP, but can be replaced with authored production audio later.

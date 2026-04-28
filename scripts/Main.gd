@@ -6,10 +6,13 @@ const MoveInputScript = preload("res://scripts/MoveInput.gd")
 const START_RADIUS := 100.0
 const PLAYER_HEIGHT := 3.2
 const QOOB_CENTER := Vector3(0.0, 13.0, 0.0)
+const QOOB_LOOK_TARGET := Vector3(0.0, 7.6, 0.0)
 const FORWARD_STEP := 11.0
 const BACKWARD_STEP := 8.0
 const STRAFE_STEP := 0.244346
 const MOVE_TIME := 0.52
+const MAZE_Y := 0.09
+const MAZE_WIDTH := 1.15
 
 const AUDIO_HUM := "res://assets/audio/qoob_hum.wav"
 const AUDIO_SCREECH := "res://assets/audio/wrong_screech.wav"
@@ -33,6 +36,9 @@ var base_environment: Environment
 var motes: Array = []
 var mote_data: Array = []
 var field_rings: Array = []
+var maze_segments: Array = []
+var spectral_segments: Array = []
+var prism_shards: Array = []
 
 var ui_layer: CanvasLayer
 var title_screen: Control
@@ -114,23 +120,23 @@ func _build_world() -> void:
 
 	base_environment = Environment.new()
 	base_environment.background_mode = Environment.BG_COLOR
-	base_environment.background_color = Color(0.016, 0.012, 0.032)
+	base_environment.background_color = Color(0.0, 0.0, 0.003)
 	base_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	base_environment.ambient_light_color = Color(0.12, 0.07, 0.18)
-	base_environment.ambient_light_energy = 0.68
+	base_environment.ambient_light_color = Color(0.025, 0.028, 0.038)
+	base_environment.ambient_light_energy = 0.24
 	base_environment.fog_enabled = true
-	base_environment.fog_density = 0.018
-	base_environment.fog_light_color = Color(0.18, 0.12, 0.24)
+	base_environment.fog_density = 0.006
+	base_environment.fog_light_color = Color(0.012, 0.014, 0.018)
 
 	environment_node = WorldEnvironment.new()
 	environment_node.environment = base_environment
 	world_root.add_child(environment_node)
 
 	var sun := DirectionalLight3D.new()
-	sun.name = "Cold Ritual Key Light"
-	sun.light_color = Color(0.42, 0.58, 0.78)
-	sun.light_energy = 0.72
-	sun.rotation_degrees = Vector3(-38.0, 44.0, 0.0)
+	sun.name = "Cold Negative-Space Edge Light"
+	sun.light_color = Color(0.78, 0.9, 1.0)
+	sun.light_energy = 0.18
+	sun.rotation_degrees = Vector3(-25.0, 38.0, 0.0)
 	world_root.add_child(sun)
 
 	var ground := MeshInstance3D.new()
@@ -141,15 +147,18 @@ func _build_world() -> void:
 	ground.material_override = _make_ground_material()
 	world_root.add_child(ground)
 
+	_build_visible_maze()
 	_build_qoob()
+	_build_spectral_beams()
 	_build_set_dressing()
 	_build_motes()
 
 	camera = Camera3D.new()
 	camera.name = "First Person Step Camera"
 	camera.current = true
-	camera.fov = 72.0
+	camera.fov = 78.0
 	camera.near = 0.05
+	camera.far = 420.0
 	world_root.add_child(camera)
 
 
@@ -160,7 +169,7 @@ func _build_qoob() -> void:
 	world_root.add_child(qoob_pivot)
 
 	var cube := MeshInstance3D.new()
-	cube.name = "Monstrously Large Alien Cube"
+	cube.name = "Monstrously Large Spectral Alien Cube"
 	var cube_mesh := BoxMesh.new()
 	cube_mesh.size = Vector3(24.0, 24.0, 24.0)
 	cube.mesh = cube_mesh
@@ -168,64 +177,282 @@ func _build_qoob() -> void:
 	cube.material_override = qoob_material
 	qoob_pivot.add_child(cube)
 
-	# Procedural field rings are MVP art: clear, original, and replaceable with authored VFX later.
-	var ring_material := _make_emissive_material(Color(0.14, 0.92, 1.0, 0.18), Color(0.18, 1.0, 1.0), 0.18)
-	for ring_index in range(5):
+	_build_qoob_edges()
+	_build_prism_shards()
+	_build_spectral_ribbons()
+
+	var ring_material := _make_additive_material(Color(0.86, 0.96, 1.0, 0.22), Color(0.72, 0.96, 1.0), 1.9, false)
+	for ring_index in range(9):
 		var ring := MeshInstance3D.new()
-		ring.name = "Magnetic Field Ring %d" % [ring_index + 1]
+		ring.name = "Spectral Field Ring %d" % [ring_index + 1]
 		var torus := TorusMesh.new()
-		var ring_radius := 17.5 + ring_index * 2.2
-		var ring_thickness := 0.06 + ring_index * 0.01
+		var ring_radius := 16.0 + ring_index * 1.75
+		var ring_thickness := 0.035 + ring_index * 0.006
 		torus.inner_radius = ring_radius
 		torus.outer_radius = ring_radius + ring_thickness
-		torus.ring_segments = 128
+		torus.ring_segments = 192
 		torus.rings = 8
 		ring.mesh = torus
 		ring.material_override = ring_material.duplicate()
-		ring.rotation_degrees = Vector3(65.0 + ring_index * 12.0, ring_index * 24.0, 25.0 + ring_index * 37.0)
+		ring.rotation_degrees = Vector3(61.0 + ring_index * 8.0, ring_index * 24.0, 18.0 + ring_index * 29.0)
 		qoob_pivot.add_child(ring)
 		field_rings.append(ring)
 
 	qoob_light = OmniLight3D.new()
-	qoob_light.name = "Qoob Low Frequency Pulse"
-	qoob_light.light_color = Color(0.2, 0.95, 1.0)
-	qoob_light.light_energy = 4.0
-	qoob_light.omni_range = 82.0
+	qoob_light.name = "Qoob White-Core Pulse"
+	qoob_light.light_color = Color(0.78, 0.96, 1.0)
+	qoob_light.light_energy = 5.2
+	qoob_light.omni_range = 96.0
 	qoob_pivot.add_child(qoob_light)
 
 
-func _build_set_dressing() -> void:
-	var pylon_material := _make_emissive_material(Color(0.05, 0.04, 0.065, 1.0), Color(0.1, 0.55, 0.65), 0.08)
+func _build_qoob_edges() -> void:
+	var edge_material := _make_additive_material(Color(0.92, 0.98, 1.0, 0.82), Color(0.9, 0.98, 1.0), 4.0, true)
+	var red_fringe := _make_additive_material(Color(1.0, 0.32, 0.14, 0.32), Color(1.0, 0.28, 0.12), 2.0)
+	var blue_fringe := _make_additive_material(Color(0.1, 0.35, 1.0, 0.34), Color(0.14, 0.45, 1.0), 2.1)
+	var h := 12.08
+	var corners := [
+		Vector3(-h, -h, -h), Vector3(h, -h, -h), Vector3(h, -h, h), Vector3(-h, -h, h),
+		Vector3(-h, h, -h), Vector3(h, h, -h), Vector3(h, h, h), Vector3(-h, h, h),
+	]
+	var edges := [
+		[0, 1], [1, 2], [2, 3], [3, 0],
+		[4, 5], [5, 6], [6, 7], [7, 4],
+		[0, 4], [1, 5], [2, 6], [3, 7],
+	]
 
-	# MVP placeholder: simple procedural obelisks stand in for hand-painted alien-industrial set dressing.
-	for index in range(10):
-		var angle := TAU * float(index) / 10.0
-		var distance := 42.0 + (index % 2) * 9.0
+	for edge in edges:
+		_add_box_line(qoob_pivot, corners[edge[0]], corners[edge[1]], 0.13, edge_material, "Qoob white edge")
+		_add_box_line(qoob_pivot, corners[edge[0]] + Vector3(0.16, 0.0, 0.0), corners[edge[1]] + Vector3(0.16, 0.0, 0.0), 0.045, red_fringe, "Qoob red fringe")
+		_add_box_line(qoob_pivot, corners[edge[0]] + Vector3(-0.16, 0.0, 0.0), corners[edge[1]] + Vector3(-0.16, 0.0, 0.0), 0.045, blue_fringe, "Qoob blue fringe")
+
+
+func _build_prism_shards() -> void:
+	var shard_material := _make_additive_material(Color(0.9, 0.98, 1.0, 0.14), Color(0.9, 0.98, 1.0), 1.15)
+	var shard_sets := [
+		[Vector3(-13.0, -4.5, 3.0), Vector3(0.0, 13.5, -8.0), Vector3(12.0, -3.0, 6.0)],
+		[Vector3(-10.0, 7.0, -12.0), Vector3(12.0, 11.0, -3.0), Vector3(6.0, -11.0, 8.0)],
+		[Vector3(-15.5, -9.0, -2.0), Vector3(-2.0, 5.0, 13.0), Vector3(11.5, -8.0, -7.0)],
+		[Vector3(0.0, -12.0, -13.0), Vector3(13.0, 0.0, 0.0), Vector3(-2.0, 12.0, 11.0)],
+	]
+
+	for index in range(shard_sets.size()):
+		var shard := MeshInstance3D.new()
+		shard.name = "Transparent Particle Prism Shard %d" % [index + 1]
+		shard.mesh = _make_triangle_mesh(shard_sets[index][0], shard_sets[index][1], shard_sets[index][2])
+		shard.material_override = shard_material.duplicate()
+		qoob_pivot.add_child(shard)
+		prism_shards.append(shard)
+
+
+func _build_spectral_ribbons() -> void:
+	var white := _make_additive_material(Color(0.95, 0.98, 1.0, 0.38), Color(0.95, 0.98, 1.0), 2.5)
+	var blue := _make_additive_material(Color(0.18, 0.54, 1.0, 0.18), Color(0.2, 0.58, 1.0), 1.75)
+	var amber := _make_additive_material(Color(1.0, 0.46, 0.1, 0.14), Color(1.0, 0.36, 0.08), 1.55)
+
+	for ribbon_index in range(7):
+		var previous := Vector3.ZERO
+		var has_previous := false
+		var points := 76
+		for point_index in range(points):
+			var t := float(point_index) / float(points - 1)
+			var sweep := -1.2 + t * 2.4
+			var angle := t * TAU * (0.7 + ribbon_index * 0.09) + ribbon_index * 0.82
+			var radius := 14.5 + sin(t * TAU * 2.0 + ribbon_index) * 2.8
+			var point := Vector3(
+				sin(angle) * radius,
+				sin(sweep) * 12.0 + sin(t * TAU * 3.0 + ribbon_index) * 1.1,
+				cos(angle * 0.72 + ribbon_index) * radius * 0.72
+			)
+			if has_previous:
+				_add_box_line(qoob_pivot, previous, point, 0.055, white, "Qoob spectral white ribbon")
+				if ribbon_index % 2 == 0:
+					_add_box_line(qoob_pivot, previous + Vector3(0.18, 0.0, 0.0), point + Vector3(0.18, 0.0, 0.0), 0.025, blue, "Qoob spectral blue fringe")
+				else:
+					_add_box_line(qoob_pivot, previous + Vector3(-0.16, 0.0, 0.0), point + Vector3(-0.16, 0.0, 0.0), 0.025, amber, "Qoob spectral amber fringe")
+			previous = point
+			has_previous = true
+
+
+func _build_spectral_beams() -> void:
+	var white := _make_additive_material(Color(0.92, 0.98, 1.0, 0.2), Color(0.92, 0.98, 1.0), 1.6)
+	var cyan := _make_additive_material(Color(0.12, 0.46, 1.0, 0.15), Color(0.12, 0.46, 1.0), 1.3)
+	var amber := _make_additive_material(Color(1.0, 0.34, 0.08, 0.14), Color(1.0, 0.34, 0.08), 1.25)
+	var beams := [
+		[Vector3(-132.0, 30.0, 78.0), Vector3(128.0, 1.6, -72.0), white, 0.42],
+		[Vector3(-132.0, 31.2, 79.2), Vector3(128.0, 2.4, -70.4), cyan, 0.24],
+		[Vector3(-132.0, 28.8, 76.4), Vector3(128.0, 0.7, -74.2), amber, 0.22],
+		[Vector3(-92.0, 4.2, 116.0), Vector3(82.0, 24.0, -96.0), white, 0.18],
+	]
+
+	for beam in beams:
+		var segment := _add_box_line(world_root, beam[0], beam[1], beam[3], beam[2], "Prismatic reference beam")
+		spectral_segments.append(segment)
+
+
+func _build_visible_maze() -> void:
+	var maze_root := Node3D.new()
+	maze_root.name = "Visible Ground Maze"
+	world_root.add_child(maze_root)
+
+	var path_colors := [
+		Color(0.95, 0.98, 1.0, 0.76),
+		Color(0.1, 0.68, 1.0, 0.64),
+		Color(1.0, 0.42, 0.12, 0.58),
+		Color(0.74, 0.45, 1.0, 0.6),
+	]
+	var paths: Array = session.maze.get_solution_paths()
+
+	for path_index in range(paths.size()):
+		var color: Color = path_colors[path_index]
+		var trace_material := _make_additive_material(color, Color(color.r, color.g, color.b), 2.0)
+		var node_material := _make_additive_material(Color(color.r, color.g, color.b, 0.34), Color(color.r, color.g, color.b), 1.2)
+		var arrow_material := _make_additive_material(Color(1.0, 1.0, 1.0, 0.68), Color(color.r, color.g, color.b), 1.8)
+		var radius := START_RADIUS
+		var angle := 0.0
+		var start_pos := _orbit_position(radius, angle, MAZE_Y)
+		_add_ground_node(maze_root, start_pos, node_material, "Maze start node")
+
+		var path: Array = paths[path_index]
+		for move_index in range(path.size()):
+			var move: String = path[move_index]
+			var next_radius := radius
+			var next_angle := angle
+			match move:
+				MoveInputScript.FORWARD:
+					next_radius = max(36.0, radius - FORWARD_STEP)
+				MoveInputScript.BACKWARD:
+					next_radius = min(124.0, radius + BACKWARD_STEP)
+				MoveInputScript.LEFT:
+					next_angle = angle - STRAFE_STEP
+				MoveInputScript.RIGHT:
+					next_angle = angle + STRAFE_STEP
+
+			var a := _orbit_position(radius, angle, MAZE_Y)
+			var b := _orbit_position(next_radius, next_angle, MAZE_Y)
+			if is_equal_approx(radius, next_radius):
+				_add_ground_arc(maze_root, radius, angle, next_angle, trace_material, "%s trace" % move)
+			else:
+				maze_segments.append(_add_box_line(maze_root, a, b, MAZE_WIDTH, trace_material, "%s trace" % move))
+
+			var direction := (b - a).normalized()
+			_add_ground_arrow(maze_root, a.lerp(b, 0.58), direction, arrow_material, "Maze direction arrow")
+			_add_step_label(maze_root, move, a.lerp(b, 0.43), direction, Color(color.r, color.g, color.b, 0.92))
+			_add_ground_node(maze_root, b, node_material, "Maze step node")
+
+			radius = next_radius
+			angle = next_angle
+
+
+func _add_ground_arc(parent: Node3D, radius: float, start_angle: float, end_angle: float, material: Material, name: String) -> void:
+	var slices := 10
+	var previous := _orbit_position(radius, start_angle, MAZE_Y)
+	for index in range(1, slices + 1):
+		var t := float(index) / float(slices)
+		var angle := lerpf(start_angle, end_angle, t)
+		var current := _orbit_position(radius, angle, MAZE_Y)
+		maze_segments.append(_add_box_line(parent, previous, current, MAZE_WIDTH, material, name))
+		previous = current
+
+
+func _add_ground_node(parent: Node3D, position: Vector3, material: Material, name: String) -> void:
+	var node := MeshInstance3D.new()
+	node.name = name
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 1.45
+	mesh.bottom_radius = 1.45
+	mesh.height = 0.035
+	mesh.radial_segments = 44
+	node.mesh = mesh
+	node.material_override = material
+	node.position = Vector3(position.x, MAZE_Y + 0.02, position.z)
+	parent.add_child(node)
+	maze_segments.append(node)
+
+
+func _add_ground_arrow(parent: Node3D, position: Vector3, direction: Vector3, material: Material, name: String) -> void:
+	var flat_direction := Vector3(direction.x, 0.0, direction.z).normalized()
+	if flat_direction.length_squared() <= 0.001:
+		return
+
+	var right := Vector3(flat_direction.z, 0.0, -flat_direction.x)
+	var tip := position + flat_direction * 1.55
+	var left := position - flat_direction * 0.92 + right * 0.78
+	var right_point := position - flat_direction * 0.92 - right * 0.78
+	var arrow := MeshInstance3D.new()
+	arrow.name = name
+	arrow.mesh = _make_triangle_mesh(
+		Vector3(tip.x, MAZE_Y + 0.08, tip.z),
+		Vector3(left.x, MAZE_Y + 0.08, left.z),
+		Vector3(right_point.x, MAZE_Y + 0.08, right_point.z)
+	)
+	arrow.material_override = material
+	parent.add_child(arrow)
+	maze_segments.append(arrow)
+
+
+func _add_step_label(parent: Node3D, text: String, position: Vector3, direction: Vector3, color: Color) -> void:
+	var flat_direction := Vector3(direction.x, 0.0, direction.z).normalized()
+	if flat_direction.length_squared() <= 0.001:
+		return
+
+	var label := Label3D.new()
+	label.name = "Ground Move Glyph %s" % text
+	label.text = text
+	label.font_size = 96
+	label.pixel_size = 0.032
+	label.modulate = color
+	label.outline_size = 10
+	label.outline_modulate = Color(0.0, 0.0, 0.0, 0.9)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.position = Vector3(position.x, MAZE_Y + 0.13, position.z)
+	label.rotation = Vector3(deg_to_rad(-90.0), atan2(flat_direction.x, flat_direction.z), 0.0)
+	parent.add_child(label)
+
+
+func _build_set_dressing() -> void:
+	var pylon_material := _make_additive_material(Color(0.78, 0.9, 1.0, 0.16), Color(0.78, 0.92, 1.0), 0.75)
+	var shadow_material := _make_emissive_material(Color(0.006, 0.006, 0.009, 1.0), Color(0.03, 0.045, 0.06), 1.0)
+
+	for index in range(18):
+		var angle := TAU * float(index) / 18.0
+		var distance := 48.0 + (index % 3) * 10.0
 		var pylon := MeshInstance3D.new()
-		pylon.name = "Ritual Pylon %d" % [index + 1]
+		pylon.name = "Void Needle %d" % [index + 1]
 		var mesh := BoxMesh.new()
-		mesh.size = Vector3(1.2, 6.0 + (index % 3), 1.2)
+		mesh.size = Vector3(0.32, 9.0 + (index % 5) * 1.7, 0.32)
 		pylon.mesh = mesh
-		pylon.material_override = pylon_material
-		pylon.position = Vector3(sin(angle) * distance, 3.0, cos(angle) * distance)
-		pylon.rotation_degrees = Vector3(0.0, rad_to_deg(angle), 8.0 if index % 2 == 0 else -8.0)
+		pylon.material_override = shadow_material
+		pylon.position = Vector3(sin(angle) * distance, 4.8, cos(angle) * distance)
+		pylon.rotation_degrees = Vector3(0.0, rad_to_deg(angle), 14.0 if index % 2 == 0 else -14.0)
 		world_root.add_child(pylon)
+
+		var filament := MeshInstance3D.new()
+		filament.name = "Void Needle Filament %d" % [index + 1]
+		var filament_mesh := BoxMesh.new()
+		filament_mesh.size = Vector3(0.055, 11.0 + (index % 4), 0.055)
+		filament.mesh = filament_mesh
+		filament.material_override = pylon_material
+		filament.position = pylon.position + Vector3(0.0, 0.35, 0.0)
+		filament.rotation = pylon.rotation
+		world_root.add_child(filament)
 
 
 func _build_motes() -> void:
-	var mote_material := _make_emissive_material(Color(0.42, 0.9, 1.0, 0.62), Color(0.4, 0.95, 1.0), 0.62)
+	var mote_material := _make_additive_material(Color(0.9, 0.98, 1.0, 0.52), Color(0.9, 0.98, 1.0), 1.55)
 
-	for index in range(34):
+	for index in range(150):
 		var mote := MeshInstance3D.new()
-		mote.name = "Faint Field Particle %d" % [index + 1]
+		mote.name = "Spectral Dust Particle %d" % [index + 1]
 		var sphere := SphereMesh.new()
-		sphere.radius = 0.075 + randf() * 0.05
-		sphere.height = 0.15 + randf() * 0.08
+		sphere.radius = 0.035 + randf() * 0.06
+		sphere.height = sphere.radius * 2.0
 		mote.mesh = sphere
-		mote.material_override = mote_material
+		mote.material_override = mote_material.duplicate()
 		world_root.add_child(mote)
 		motes.append(mote)
-		mote_data.append(Vector4(randf() * TAU, randf_range(18.0, 43.0), randf_range(2.0, 22.0), randf_range(0.18, 0.8)))
+		mote_data.append(Vector4(randf() * TAU, randf_range(12.0, 74.0), randf_range(1.4, 31.0), randf_range(0.08, 0.62)))
 
 
 func _build_ui() -> void:
@@ -250,22 +477,34 @@ func _build_title_screen() -> Control:
 	_full_rect(screen)
 
 	var background := ColorRect.new()
-	background.color = Color(0.014, 0.01, 0.024, 1.0)
+	background.color = Color(0.0, 0.0, 0.003, 1.0)
 	_full_rect(background)
 	screen.add_child(background)
+
+	var beam_colors := [Color(0.92, 0.98, 1.0, 0.18), Color(0.12, 0.42, 1.0, 0.12), Color(1.0, 0.32, 0.08, 0.11)]
+	for index in range(beam_colors.size()):
+		var beam := ColorRect.new()
+		beam.name = "Title Spectral Beam %d" % [index + 1]
+		beam.color = beam_colors[index]
+		beam.anchor_left = -0.18
+		beam.anchor_top = 0.47 + index * 0.018
+		beam.anchor_right = 1.22
+		beam.anchor_bottom = 0.495 + index * 0.018
+		beam.rotation = deg_to_rad(-26.0)
+		screen.add_child(beam)
 
 	var title := Label.new()
 	title.text = "Qoob"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 96)
-	title.add_theme_color_override("font_color", Color(0.72, 1.0, 1.0))
+	title.add_theme_color_override("font_color", Color(0.94, 0.98, 1.0))
 
 	var hint := Label.new()
-	hint.text = "Step toward the hovering intelligence. WASD, arrows, or screen clicks."
+	hint.text = "Follow the spectral ground paths. WASD, arrows, or screen clicks."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", 18)
-	hint.add_theme_color_override("font_color", Color(0.82, 0.78, 0.9))
+	hint.add_theme_color_override("font_color", Color(0.82, 0.9, 1.0))
 
 	var start_button := Button.new()
 	start_button.text = "Start"
@@ -303,16 +542,16 @@ func _build_loading_screen() -> Control:
 	_full_rect(screen)
 
 	var background := ColorRect.new()
-	background.color = Color(0.004, 0.004, 0.012, 1.0)
+	background.color = Color(0.0, 0.0, 0.003, 1.0)
 	_full_rect(background)
 	screen.add_child(background)
 
 	var label := Label.new()
-	label.text = "The Qoob is noticing you..."
+	label.text = "The Qoob is tuning the path..."
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 30)
-	label.add_theme_color_override("font_color", Color(0.62, 0.96, 1.0))
+	label.add_theme_color_override("font_color", Color(0.92, 0.98, 1.0))
 	_full_rect(label)
 	screen.add_child(label)
 
@@ -343,7 +582,7 @@ func _build_hud() -> Control:
 	strike_label.text = "Mistakes 0/3"
 	strike_label.position = Vector2(24.0, 20.0)
 	strike_label.add_theme_font_size_override("font_size", 18)
-	strike_label.add_theme_color_override("font_color", Color(0.74, 0.93, 1.0, 0.86))
+	strike_label.add_theme_color_override("font_color", Color(0.9, 0.97, 1.0, 0.88))
 	strike_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	screen.add_child(strike_label)
 
@@ -418,7 +657,7 @@ func _build_game_over_screen() -> Control:
 func _build_audio() -> void:
 	hum_player = AudioStreamPlayer.new()
 	hum_player.name = "Qoob Hum Player"
-	hum_player.volume_db = -11.0
+	hum_player.volume_db = -13.0
 	hum_player.stream = _load_audio(AUDIO_HUM, true)
 	add_child(hum_player)
 
@@ -488,7 +727,7 @@ func show_title() -> void:
 	busy = false
 	_show_only(title_screen)
 	world_root.visible = false
-	_stop_hum()
+	_play_hum(-13.0)
 
 
 func show_gameplay() -> void:
@@ -500,7 +739,7 @@ func show_gameplay() -> void:
 	_set_overlay_alpha(0.0)
 	feedback_label.visible = false
 	_update_hud()
-	_play_hum()
+	_play_hum(-2.5)
 
 
 func show_game_over() -> void:
@@ -508,7 +747,7 @@ func show_game_over() -> void:
 	busy = false
 	world_root.visible = true
 	_show_only(game_over_screen)
-	_stop_hum()
+	_play_hum(-7.0)
 
 
 func _show_only(screen: Control) -> void:
@@ -534,7 +773,7 @@ func _update_player_camera() -> void:
 		return
 
 	camera.position = Vector3(sin(orbit_angle) * orbit_radius, PLAYER_HEIGHT, cos(orbit_angle) * orbit_radius)
-	camera.look_at(QOOB_CENTER, Vector3.UP)
+	camera.look_at(QOOB_LOOK_TARGET, Vector3.UP)
 
 
 func _animate_step(move: String) -> void:
@@ -641,7 +880,11 @@ func _tween_overlay_alpha(alpha: float, duration: float, base_color: Color = Col
 	await tween.finished
 
 
-func _play_hum() -> void:
+func _play_hum(volume_db: float = -2.5) -> void:
+	if hum_player == null:
+		return
+
+	hum_player.volume_db = volume_db
 	if hum_player.stream != null and not hum_player.playing:
 		hum_player.play()
 
@@ -653,21 +896,30 @@ func _stop_hum() -> void:
 
 func _update_qoob(delta: float) -> void:
 	var time := Time.get_ticks_msec() / 1000.0
-	var pulse := (sin(time * 2.1) + 1.0) * 0.5
+	var pulse := (sin(time * 1.65) + 1.0) * 0.5
+	var twitch := (sin(time * 17.0) + sin(time * 23.0 + 0.7)) * 0.025
 
-	qoob_pivot.position.y = 12.35 + sin(time * 1.17) * 0.28
-	qoob_pivot.rotation.y += delta * 0.1
+	qoob_pivot.position.y = 12.35 + sin(time * 0.88) * 0.34 + twitch
+	qoob_pivot.rotation.y += delta * 0.075
+	qoob_pivot.rotation.x = sin(time * 0.22) * 0.035
+	qoob_pivot.rotation.z = sin(time * 0.19 + 1.2) * 0.028
 
 	if qoob_material != null:
 		qoob_material.set_shader_parameter("pulse", pulse)
 
 	if qoob_light != null:
-		qoob_light.light_energy = 3.2 + pulse * 2.6 + randf_range(-0.08, 0.08)
+		qoob_light.light_energy = 4.7 + pulse * 4.8 + randf_range(-0.16, 0.16)
 
 	for index in range(field_rings.size()):
 		var ring: MeshInstance3D = field_rings[index]
-		ring.rotation.y += delta * (0.05 + index * 0.017)
-		ring.rotation.x += delta * (0.021 + index * 0.006)
+		ring.rotation.y += delta * (0.035 + index * 0.014)
+		ring.rotation.x += delta * (0.018 + index * 0.005)
+		ring.scale = Vector3.ONE * (1.0 + sin(time * 1.2 + index) * 0.018)
+
+	for index in range(prism_shards.size()):
+		var shard: MeshInstance3D = prism_shards[index]
+		shard.rotation.y += delta * (0.08 + index * 0.02)
+		shard.rotation.z += delta * (0.025 + index * 0.01)
 
 
 func _update_motes() -> void:
@@ -677,9 +929,45 @@ func _update_motes() -> void:
 		var mote: MeshInstance3D = motes[index]
 		var data: Vector4 = mote_data[index]
 		var angle := data.x + time * data.w
-		var radius := data.y + sin(time * 0.9 + data.x) * 1.7
-		var height := data.z + sin(time * 1.4 + data.x * 2.0) * 0.8
-		mote.position = Vector3(sin(angle) * radius, height, cos(angle) * radius)
+		var radius := data.y + sin(time * 0.55 + data.x) * 2.3
+		var height := data.z + sin(time * 1.1 + data.x * 2.0) * 1.2
+		var skew := sin(time * 0.22 + data.x) * 10.0
+		mote.position = Vector3(sin(angle) * radius + skew, height, cos(angle * 0.86) * radius)
+
+
+func _orbit_position(radius: float, angle: float, y: float) -> Vector3:
+	return Vector3(sin(angle) * radius, y, cos(angle) * radius)
+
+
+func _add_box_line(parent: Node3D, a: Vector3, b: Vector3, width: float, material: Material, name: String) -> MeshInstance3D:
+	var direction := b - a
+	var length := direction.length()
+	var segment := MeshInstance3D.new()
+	segment.name = name
+	if length <= 0.001:
+		return segment
+
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(width, width, length)
+	segment.mesh = mesh
+	segment.material_override = material
+	segment.position = a.lerp(b, 0.5)
+	var forward := direction.normalized()
+	var up := Vector3.UP if abs(forward.dot(Vector3.UP)) < 0.96 else Vector3.FORWARD
+	segment.basis = Basis.looking_at(forward, up)
+	parent.add_child(segment)
+	return segment
+
+
+func _make_triangle_mesh(a: Vector3, b: Vector3, c: Vector3) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([a, b, c])
+	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP])
+	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2])
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 func _make_qoob_shader_material() -> ShaderMaterial:
@@ -688,22 +976,26 @@ func _make_qoob_shader_material() -> ShaderMaterial:
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
-uniform vec4 base_color : source_color = vec4(0.06, 0.03, 0.11, 1.0);
-uniform vec4 vein_color : source_color = vec4(0.13, 0.95, 1.0, 1.0);
-uniform vec4 hot_color : source_color = vec4(1.0, 0.75, 0.35, 1.0);
+uniform vec4 base_color : source_color = vec4(0.002, 0.002, 0.006, 1.0);
+uniform vec4 vein_color : source_color = vec4(0.92, 0.98, 1.0, 1.0);
+uniform vec4 blue_fringe : source_color = vec4(0.08, 0.35, 1.0, 1.0);
+uniform vec4 red_fringe : source_color = vec4(1.0, 0.22, 0.05, 1.0);
 uniform float pulse = 0.0;
 
 void fragment() {
-	float grid_a = abs(sin(UV.x * 31.0 + TIME * 0.8));
-	float grid_b = abs(sin(UV.y * 27.0 - TIME * 0.55));
-	float glyph = smoothstep(0.92, 1.0, grid_a * grid_b);
-	float slow = 0.5 + 0.5 * sin(TIME * 1.7 + UV.x * 4.0 - UV.y * 3.0);
-	vec3 color = mix(base_color.rgb, vein_color.rgb, glyph * 0.65 + pulse * 0.18);
-	color = mix(color, hot_color.rgb, glyph * slow * 0.22);
+	float razor_x = smoothstep(0.972, 1.0, abs(sin(UV.x * 38.0 + TIME * 0.7)));
+	float razor_y = smoothstep(0.965, 1.0, abs(sin(UV.y * 35.0 - TIME * 0.53)));
+	float dust = smoothstep(0.6, 1.0, fract(sin(dot(UV * 240.0 + TIME, vec2(12.9898, 78.233))) * 43758.5453));
+	float veil = smoothstep(0.78, 1.0, razor_x + razor_y * 0.85) * (0.7 + dust * 0.3);
+	float diagonal = smoothstep(0.955, 1.0, abs(sin((UV.x + UV.y) * 19.0 + TIME * 0.42)));
+	float chroma = sin((UV.x - UV.y) * 16.0 + TIME * 1.1) * 0.5 + 0.5;
+	vec3 fringe = mix(red_fringe.rgb, blue_fringe.rgb, chroma);
+	vec3 color = mix(base_color.rgb, vein_color.rgb, veil * 0.65 + pulse * 0.08);
+	color = mix(color, fringe, diagonal * 0.22);
 	ALBEDO = color;
-	EMISSION = vein_color.rgb * (0.55 + pulse * 2.2 + glyph * 1.9) + hot_color.rgb * glyph * 0.28;
-	ROUGHNESS = 0.42;
-	METALLIC = 0.12;
+	EMISSION = vein_color.rgb * (0.75 + pulse * 3.2 + veil * 4.0) + fringe * diagonal * 1.7;
+	ROUGHNESS = 0.2;
+	METALLIC = 0.25;
 }
 """
 
@@ -715,12 +1007,12 @@ void fragment() {
 
 func _make_ground_material() -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.075, 0.056, 0.079)
-	material.roughness = 0.92
-	material.metallic = 0.0
+	material.albedo_color = Color(0.002, 0.002, 0.004)
+	material.roughness = 0.64
+	material.metallic = 0.16
 	material.emission_enabled = true
-	material.emission = Color(0.02, 0.05, 0.055)
-	material.emission_energy_multiplier = 0.24
+	material.emission = Color(0.004, 0.006, 0.009)
+	material.emission_energy_multiplier = 0.12
 	return material
 
 
@@ -734,6 +1026,20 @@ func _make_emissive_material(albedo: Color, emission: Color, alpha: float) -> St
 	if alpha < 1.0:
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		material.no_depth_test = false
+	return material
+
+
+func _make_additive_material(albedo: Color, emission: Color, energy: float, no_depth_test: bool = false) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = albedo
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.emission_enabled = true
+	material.emission = emission
+	material.emission_energy_multiplier = energy
+	material.no_depth_test = no_depth_test
+	material.disable_receive_shadows = true
 	return material
 
 
