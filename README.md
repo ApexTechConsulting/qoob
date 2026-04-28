@@ -51,6 +51,7 @@ The macOS export preset is named `macOS` and targets `dist/Qoob.app`.
 
 ```sh
 mkdir -p dist
+rm -rf dist/Qoob.app
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-release macOS dist/Qoob.app
 ditto -c -k --keepParent dist/Qoob.app dist/Qoob-mac.zip
 ```
@@ -105,4 +106,3 @@ All committed art and audio are original, procedural, or MVP placeholders genera
 - The environment art is intentionally compact MVP procedural art.
 - There is no mouse-look or free-roam movement by design.
 - The current audio is procedural and final enough for MVP, but can be replaced with authored production audio later.
-

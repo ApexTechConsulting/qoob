@@ -31,6 +31,7 @@ Export macOS app:
 
 ```sh
 mkdir -p dist
+rm -rf dist/Qoob.app
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-release macOS dist/Qoob.app
 ditto -c -k --keepParent dist/Qoob.app dist/Qoob-mac.zip
 ```
@@ -62,4 +63,3 @@ GitHub authentication was available during setup, so the repository was created 
 gh auth login
 gh repo create qoob --public --source=. --remote=origin --push
 ```
-
