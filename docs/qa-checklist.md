@@ -23,7 +23,8 @@
 - Confirm the player starts facing the giant Qoob.
 - Confirm the Qoob is roughly 100 feet ahead, hovering just above the ground.
 - Confirm a low phasing Qoob hum is audible on the title screen and louder during gameplay.
-- Confirm the ground maze is visible as glowing paths with arrows and movement glyphs.
+- Confirm the environment reads as open, sky-lit grey concrete with soft fog and blocky post-brutalist forms.
+- Confirm the ground maze is visible as subdued paths with arrows and movement glyphs.
 - Confirm the Qoob remains centered or nearly centered after every movement.
 - Confirm there is no mouse-look and no continuous free-roam movement.
 - Confirm `W`, `A`, `S`, `D` movement works.

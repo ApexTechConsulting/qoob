@@ -2,9 +2,9 @@
 
 Qoob is a short first-person atmospheric puzzle game built in Godot 4 for macOS.
 
-You begin in a black ritual void facing the Qoob: a huge hovering alien cube about 100 feet ahead. The cube pulses, hums, watches, and punishes wrong movement. There is one level, one deterministic movement-sequence maze, and exactly four valid paths to reach the Qoob.
+You begin in an open sky-lit concrete arena facing the Qoob: a huge hovering alien cube about 100 feet ahead. The cube pulses, hums, watches, and punishes wrong movement. There is one level, one deterministic movement-sequence maze, and exactly four valid paths to reach the Qoob.
 
-The current art pass uses luminous white spectral geometry, prismatic fringes, particle ribbons, and glowing ground traces inspired by abstract light-capture imagery. The maze is visible on the ground for playtesting: each valid route is drawn as a glowing path with arrows and move glyphs.
+The current art pass emulates the lighting and mood of Lunaran's `lun3dm5`: matte grey concrete, offset cuboid block stacks, open blue sky, gentle fog, soft sky-dome lighting, and ambient-occlusion-like edge grime. The maze is visible on the ground for playtesting: each valid route is drawn as a subdued concrete-sci-fi path with arrows and move glyphs.
 
 ## Gameplay
 

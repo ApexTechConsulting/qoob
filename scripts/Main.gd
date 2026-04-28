@@ -39,6 +39,7 @@ var field_rings: Array = []
 var maze_segments: Array = []
 var spectral_segments: Array = []
 var prism_shards: Array = []
+var concrete_blocks: Array = []
 
 var ui_layer: CanvasLayer
 var title_screen: Control
@@ -120,36 +121,39 @@ func _build_world() -> void:
 
 	base_environment = Environment.new()
 	base_environment.background_mode = Environment.BG_COLOR
-	base_environment.background_color = Color(0.0, 0.0, 0.003)
+	base_environment.background_color = Color(0.52, 0.68, 0.78)
 	base_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	base_environment.ambient_light_color = Color(0.025, 0.028, 0.038)
-	base_environment.ambient_light_energy = 0.24
+	base_environment.ambient_light_color = Color(0.62, 0.72, 0.78)
+	base_environment.ambient_light_energy = 1.05
 	base_environment.fog_enabled = true
-	base_environment.fog_density = 0.006
-	base_environment.fog_light_color = Color(0.012, 0.014, 0.018)
+	base_environment.fog_density = 0.011
+	base_environment.fog_light_color = Color(0.58, 0.68, 0.72)
 
 	environment_node = WorldEnvironment.new()
 	environment_node.environment = base_environment
 	world_root.add_child(environment_node)
 
 	var sun := DirectionalLight3D.new()
-	sun.name = "Cold Negative-Space Edge Light"
-	sun.light_color = Color(0.78, 0.9, 1.0)
-	sun.light_energy = 0.18
-	sun.rotation_degrees = Vector3(-25.0, 38.0, 0.0)
+	sun.name = "Soft Sky Key Sun"
+	sun.light_color = Color(0.82, 0.9, 1.0)
+	sun.light_energy = 0.82
+	sun.shadow_enabled = true
+	sun.rotation_degrees = Vector3(-42.0, 38.0, 0.0)
 	world_root.add_child(sun)
+
+	_build_dome_fill_lights()
+	_build_cloud_deck()
 
 	var ground := MeshInstance3D.new()
 	ground.name = "Barren Otherworldly Ground"
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(240.0, 240.0)
+	plane.size = Vector2(300.0, 300.0)
 	ground.mesh = plane
 	ground.material_override = _make_ground_material()
 	world_root.add_child(ground)
 
 	_build_visible_maze()
 	_build_qoob()
-	_build_spectral_beams()
 	_build_set_dressing()
 	_build_motes()
 
@@ -160,6 +164,52 @@ func _build_world() -> void:
 	camera.near = 0.05
 	camera.far = 420.0
 	world_root.add_child(camera)
+
+
+func _build_dome_fill_lights() -> void:
+	var directions := [
+		Vector3(-0.7, -1.0, -0.2),
+		Vector3(0.65, -1.0, -0.45),
+		Vector3(-0.18, -1.0, 0.8),
+		Vector3(0.38, -1.0, 0.72),
+		Vector3(-0.92, -0.58, 0.28),
+		Vector3(0.86, -0.62, 0.18),
+	]
+	var colors := [
+		Color(0.62, 0.72, 0.82),
+		Color(0.54, 0.65, 0.76),
+		Color(0.72, 0.76, 0.72),
+		Color(0.58, 0.7, 0.78),
+		Color(0.42, 0.52, 0.64),
+		Color(0.48, 0.58, 0.68),
+	]
+
+	for index in range(directions.size()):
+		var light := DirectionalLight3D.new()
+		light.name = "Concrete Dome Fill %d" % [index + 1]
+		light.light_color = colors[index]
+		light.light_energy = 0.14
+		light.shadow_enabled = true
+		light.look_at_from_position(-directions[index] * 10.0, Vector3.ZERO, Vector3.UP)
+		world_root.add_child(light)
+
+
+func _build_cloud_deck() -> void:
+	var cloud_material := _make_additive_material(Color(0.92, 0.96, 1.0, 0.12), Color(0.8, 0.88, 0.94), 0.24)
+	cloud_material.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+
+	for index in range(12):
+		var cloud := MeshInstance3D.new()
+		cloud.name = "Soft Sky Cloud Bank %d" % [index + 1]
+		var mesh := PlaneMesh.new()
+		mesh.size = Vector2(54.0 + (index % 4) * 18.0, 16.0 + (index % 3) * 10.0)
+		cloud.mesh = mesh
+		cloud.material_override = cloud_material.duplicate()
+		var angle := TAU * float(index) / 12.0
+		var radius := 118.0 + (index % 3) * 18.0
+		cloud.position = Vector3(sin(angle) * radius, 48.0 + (index % 5) * 7.0, cos(angle) * radius)
+		cloud.rotation_degrees = Vector3(-82.0, rad_to_deg(angle) + 90.0, randf_range(-8.0, 8.0))
+		world_root.add_child(cloud)
 
 
 func _build_qoob() -> void:
@@ -178,16 +228,14 @@ func _build_qoob() -> void:
 	qoob_pivot.add_child(cube)
 
 	_build_qoob_edges()
-	_build_prism_shards()
-	_build_spectral_ribbons()
 
-	var ring_material := _make_additive_material(Color(0.86, 0.96, 1.0, 0.22), Color(0.72, 0.96, 1.0), 1.9, false)
-	for ring_index in range(9):
+	var ring_material := _make_additive_material(Color(0.24, 0.72, 1.0, 0.18), Color(0.18, 0.52, 0.85), 0.85, false)
+	for ring_index in range(6):
 		var ring := MeshInstance3D.new()
-		ring.name = "Spectral Field Ring %d" % [ring_index + 1]
+		ring.name = "Quiet Magnetic Field Ring %d" % [ring_index + 1]
 		var torus := TorusMesh.new()
-		var ring_radius := 16.0 + ring_index * 1.75
-		var ring_thickness := 0.035 + ring_index * 0.006
+		var ring_radius := 17.0 + ring_index * 2.2
+		var ring_thickness := 0.035 + ring_index * 0.004
 		torus.inner_radius = ring_radius
 		torus.outer_radius = ring_radius + ring_thickness
 		torus.ring_segments = 192
@@ -199,17 +247,17 @@ func _build_qoob() -> void:
 		field_rings.append(ring)
 
 	qoob_light = OmniLight3D.new()
-	qoob_light.name = "Qoob White-Core Pulse"
-	qoob_light.light_color = Color(0.78, 0.96, 1.0)
-	qoob_light.light_energy = 5.2
-	qoob_light.omni_range = 96.0
+	qoob_light.name = "Qoob Electric Interior Pulse"
+	qoob_light.light_color = Color(0.22, 0.68, 1.0)
+	qoob_light.light_energy = 2.2
+	qoob_light.omni_range = 70.0
 	qoob_pivot.add_child(qoob_light)
 
 
 func _build_qoob_edges() -> void:
-	var edge_material := _make_additive_material(Color(0.92, 0.98, 1.0, 0.82), Color(0.9, 0.98, 1.0), 4.0, true)
-	var red_fringe := _make_additive_material(Color(1.0, 0.32, 0.14, 0.32), Color(1.0, 0.28, 0.12), 2.0)
-	var blue_fringe := _make_additive_material(Color(0.1, 0.35, 1.0, 0.34), Color(0.14, 0.45, 1.0), 2.1)
+	var edge_material := _make_additive_material(Color(0.18, 0.58, 0.9, 0.5), Color(0.14, 0.48, 0.82), 1.6, true)
+	var red_fringe := _make_additive_material(Color(0.8, 0.34, 0.18, 0.12), Color(0.75, 0.28, 0.16), 0.7)
+	var blue_fringe := _make_additive_material(Color(0.1, 0.35, 1.0, 0.18), Color(0.1, 0.38, 0.9), 0.9)
 	var h := 12.08
 	var corners := [
 		Vector3(-h, -h, -h), Vector3(h, -h, -h), Vector3(h, -h, h), Vector3(-h, -h, h),
@@ -296,18 +344,18 @@ func _build_visible_maze() -> void:
 	world_root.add_child(maze_root)
 
 	var path_colors := [
-		Color(0.95, 0.98, 1.0, 0.76),
-		Color(0.1, 0.68, 1.0, 0.64),
-		Color(1.0, 0.42, 0.12, 0.58),
-		Color(0.74, 0.45, 1.0, 0.6),
+		Color(0.88, 0.94, 0.96, 0.58),
+		Color(0.48, 0.68, 0.82, 0.52),
+		Color(0.78, 0.68, 0.52, 0.48),
+		Color(0.58, 0.64, 0.78, 0.5),
 	]
 	var paths: Array = session.maze.get_solution_paths()
 
 	for path_index in range(paths.size()):
 		var color: Color = path_colors[path_index]
-		var trace_material := _make_additive_material(color, Color(color.r, color.g, color.b), 2.0)
-		var node_material := _make_additive_material(Color(color.r, color.g, color.b, 0.34), Color(color.r, color.g, color.b), 1.2)
-		var arrow_material := _make_additive_material(Color(1.0, 1.0, 1.0, 0.68), Color(color.r, color.g, color.b), 1.8)
+		var trace_material := _make_additive_material(color, Color(color.r, color.g, color.b), 0.7)
+		var node_material := _make_additive_material(Color(color.r, color.g, color.b, 0.28), Color(color.r, color.g, color.b), 0.45)
+		var arrow_material := _make_additive_material(Color(0.92, 0.96, 0.96, 0.54), Color(color.r, color.g, color.b), 0.8)
 		var radius := START_RADIUS
 		var angle := 0.0
 		var start_pos := _orbit_position(radius, angle, MAZE_Y)
@@ -412,47 +460,161 @@ func _add_step_label(parent: Node3D, text: String, position: Vector3, direction:
 
 
 func _build_set_dressing() -> void:
-	var pylon_material := _make_additive_material(Color(0.78, 0.9, 1.0, 0.16), Color(0.78, 0.92, 1.0), 0.75)
-	var shadow_material := _make_emissive_material(Color(0.006, 0.006, 0.009, 1.0), Color(0.03, 0.045, 0.06), 1.0)
+	var concrete := _make_concrete_material(Color(0.46, 0.53, 0.56), 1.0)
+	var dark_concrete := _make_concrete_material(Color(0.29, 0.35, 0.38), 1.0)
 
-	for index in range(18):
-		var angle := TAU * float(index) / 18.0
-		var distance := 48.0 + (index % 3) * 10.0
-		var pylon := MeshInstance3D.new()
-		pylon.name = "Void Needle %d" % [index + 1]
-		var mesh := BoxMesh.new()
-		mesh.size = Vector3(0.32, 9.0 + (index % 5) * 1.7, 0.32)
-		pylon.mesh = mesh
-		pylon.material_override = shadow_material
-		pylon.position = Vector3(sin(angle) * distance, 4.8, cos(angle) * distance)
-		pylon.rotation_degrees = Vector3(0.0, rad_to_deg(angle), 14.0 if index % 2 == 0 else -14.0)
-		world_root.add_child(pylon)
+	# Procedural original "cubespew" architecture: matte concrete block stacks inspired by the reference's sky-lit austerity.
+	var clusters := [
+		{"angle": -0.82, "radius": 52.0, "height": 26.0, "count": 62},
+		{"angle": 0.74, "radius": 57.0, "height": 31.0, "count": 58},
+		{"angle": 1.72, "radius": 76.0, "height": 22.0, "count": 44},
+		{"angle": -1.74, "radius": 82.0, "height": 28.0, "count": 48},
+	]
 
-		var filament := MeshInstance3D.new()
-		filament.name = "Void Needle Filament %d" % [index + 1]
-		var filament_mesh := BoxMesh.new()
-		filament_mesh.size = Vector3(0.055, 11.0 + (index % 4), 0.055)
-		filament.mesh = filament_mesh
-		filament.material_override = pylon_material
-		filament.position = pylon.position + Vector3(0.0, 0.35, 0.0)
-		filament.rotation = pylon.rotation
-		world_root.add_child(filament)
+	for cluster_index in range(clusters.size()):
+		var cluster: Dictionary = clusters[cluster_index]
+		_build_concrete_cluster(
+			float(cluster["angle"]),
+			float(cluster["radius"]),
+			float(cluster["height"]),
+			int(cluster["count"]),
+			concrete,
+			dark_concrete,
+			cluster_index
+		)
+
+	_build_concrete_bridge(-0.82, 0.74, 58.0, 24.0, concrete, dark_concrete, "North Sky Bridge")
+	_build_concrete_bridge(1.72, 0.74, 72.0, 18.0, concrete, dark_concrete, "East Sky Bridge")
+	_build_concrete_bridge(-1.74, -0.82, 72.0, 20.0, concrete, dark_concrete, "West Sky Bridge")
+
+	for index in range(22):
+		var angle := TAU * float(index) / 22.0 + 0.09
+		var radius := 70.0 + (index % 4) * 13.0
+		var size := Vector3(2.2 + (index % 3) * 0.8, 2.0 + (index % 5) * 0.65, 2.2 + (index % 4) * 0.7)
+		var height := 10.0 + (index % 8) * 2.8
+		_add_concrete_block(
+			world_root,
+			Vector3(sin(angle) * radius, height, cos(angle) * radius),
+			size,
+			Vector3(0.0, angle + randf_range(-0.08, 0.08), 0.0),
+			concrete,
+			"Detached Concrete Floater"
+		)
+
+
+func _build_concrete_cluster(angle: float, radius: float, height: float, count: int, concrete: Material, dark_concrete: Material, cluster_index: int) -> void:
+	var center := Vector3(sin(angle) * radius, 0.0, cos(angle) * radius)
+	var tangent := Vector3(cos(angle), 0.0, -sin(angle)).normalized()
+	var radial := Vector3(sin(angle), 0.0, cos(angle)).normalized()
+
+	_add_concrete_block(
+		world_root,
+		center + Vector3(0.0, height * 0.48, 0.0),
+		Vector3(8.5, height, 9.2),
+		Vector3(0.0, angle, 0.0),
+		dark_concrete,
+		"Concrete Megastructure Core"
+	)
+
+	for index in range(count):
+		var layer := index % 9
+		var side := -1.0 if index % 2 == 0 else 1.0
+		var outward := -1.0 if index % 5 == 0 else 1.0
+		var local_x := tangent * (side * (4.4 + float(layer % 4) * 2.2 + randf_range(-0.4, 0.4)))
+		var local_z := radial * (outward * (4.2 + float((index + cluster_index) % 5) * 1.7))
+		var y := 3.0 + float((index * 5 + cluster_index * 3) % 15) * 1.9
+		var size := Vector3(
+			2.0 + float((index + 1) % 5) * 0.9,
+			1.4 + float((index + 2) % 4) * 0.85,
+			2.0 + float((index + 3) % 5) * 0.9
+		)
+		var mat := concrete if index % 4 != 0 else dark_concrete
+		_add_concrete_block(
+			world_root,
+			center + local_x + local_z + Vector3(0.0, y, 0.0),
+			size,
+			Vector3(0.0, angle + randf_range(-0.035, 0.035), 0.0),
+			mat,
+			"Offset Concrete Cubespew"
+		)
+
+	for column_index in range(4):
+		var offset := tangent * (-8.0 + column_index * 5.3) + radial * randf_range(-2.0, 2.0)
+		_add_concrete_block(
+			world_root,
+			center + offset + Vector3(0.0, 8.0, 0.0),
+			Vector3(2.2, 16.0 + column_index * 2.5, 2.2),
+			Vector3(0.0, angle, 0.0),
+			dark_concrete,
+			"Slender Concrete Support"
+		)
+
+
+func _build_concrete_bridge(from_angle: float, to_angle: float, radius: float, height: float, concrete: Material, dark_concrete: Material, label: String) -> void:
+	var from := Vector3(sin(from_angle) * radius, height, cos(from_angle) * radius)
+	var to := Vector3(sin(to_angle) * radius, height + 1.5, cos(to_angle) * radius)
+	var direction := to - from
+	var length := direction.length()
+	var bridge := _add_box_line(world_root, from, to, 5.2, concrete, label)
+	bridge.scale.y = 0.42
+	concrete_blocks.append(bridge)
+
+	var steps := maxi(4, int(length / 8.0))
+	for index in range(steps):
+		var t := float(index) / float(maxi(1, steps - 1))
+		var pos := from.lerp(to, t)
+		var mat := dark_concrete if index % 3 == 0 else concrete
+		_add_concrete_block(
+			world_root,
+			pos + Vector3(0.0, -2.2 - float(index % 2) * 0.8, 0.0),
+			Vector3(6.2, 1.1, 3.0 + float(index % 3)),
+			Vector3(0.0, atan2(direction.x, direction.z), 0.0),
+			mat,
+			"Bridge Underside Block"
+		)
+
+
+func _add_concrete_block(parent: Node3D, position: Vector3, size: Vector3, rotation: Vector3, material: Material, name: String) -> MeshInstance3D:
+	var block := MeshInstance3D.new()
+	block.name = name
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	block.mesh = mesh
+	block.material_override = material.duplicate() if material != null else null
+	block.position = position
+	block.rotation = rotation
+	parent.add_child(block)
+	concrete_blocks.append(block)
+
+	var edge_material := _make_emissive_material(Color(0.12, 0.15, 0.16, 0.55), Color(0.02, 0.025, 0.03), 0.55)
+	var lip_count := 2 + int(abs(int(position.x + position.z)) % 3)
+	for lip_index in range(lip_count):
+		var lip := MeshInstance3D.new()
+		lip.name = "Concrete Dirty Edge"
+		var lip_mesh := BoxMesh.new()
+		lip_mesh.size = Vector3(size.x * randf_range(0.55, 1.0), 0.08, 0.11)
+		lip.mesh = lip_mesh
+		lip.material_override = edge_material
+		lip.position = position + Vector3(randf_range(-size.x * 0.2, size.x * 0.2), size.y * 0.5 + 0.045, randf_range(-size.z * 0.5, size.z * 0.5))
+		lip.rotation = rotation
+		parent.add_child(lip)
+	return block
 
 
 func _build_motes() -> void:
-	var mote_material := _make_additive_material(Color(0.9, 0.98, 1.0, 0.52), Color(0.9, 0.98, 1.0), 1.55)
+	var mote_material := _make_additive_material(Color(0.72, 0.8, 0.84, 0.18), Color(0.58, 0.66, 0.72), 0.28)
 
-	for index in range(150):
+	for index in range(70):
 		var mote := MeshInstance3D.new()
-		mote.name = "Spectral Dust Particle %d" % [index + 1]
+		mote.name = "Concrete Sky Dust %d" % [index + 1]
 		var sphere := SphereMesh.new()
-		sphere.radius = 0.035 + randf() * 0.06
+		sphere.radius = 0.035 + randf() * 0.045
 		sphere.height = sphere.radius * 2.0
 		mote.mesh = sphere
 		mote.material_override = mote_material.duplicate()
 		world_root.add_child(mote)
 		motes.append(mote)
-		mote_data.append(Vector4(randf() * TAU, randf_range(12.0, 74.0), randf_range(1.4, 31.0), randf_range(0.08, 0.62)))
+		mote_data.append(Vector4(randf() * TAU, randf_range(16.0, 96.0), randf_range(4.0, 38.0), randf_range(0.04, 0.22)))
 
 
 func _build_ui() -> void:
@@ -477,11 +639,11 @@ func _build_title_screen() -> Control:
 	_full_rect(screen)
 
 	var background := ColorRect.new()
-	background.color = Color(0.0, 0.0, 0.003, 1.0)
+	background.color = Color(0.38, 0.5, 0.58, 1.0)
 	_full_rect(background)
 	screen.add_child(background)
 
-	var beam_colors := [Color(0.92, 0.98, 1.0, 0.18), Color(0.12, 0.42, 1.0, 0.12), Color(1.0, 0.32, 0.08, 0.11)]
+	var beam_colors := [Color(0.9, 0.94, 0.96, 0.24), Color(0.2, 0.28, 0.34, 0.16), Color(0.72, 0.78, 0.78, 0.14)]
 	for index in range(beam_colors.size()):
 		var beam := ColorRect.new()
 		beam.name = "Title Spectral Beam %d" % [index + 1]
@@ -497,14 +659,14 @@ func _build_title_screen() -> Control:
 	title.text = "Qoob"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 96)
-	title.add_theme_color_override("font_color", Color(0.94, 0.98, 1.0))
+	title.add_theme_color_override("font_color", Color(0.94, 0.96, 0.94))
 
 	var hint := Label.new()
-	hint.text = "Follow the spectral ground paths. WASD, arrows, or screen clicks."
+	hint.text = "Follow the concrete ground paths. WASD, arrows, or screen clicks."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", 18)
-	hint.add_theme_color_override("font_color", Color(0.82, 0.9, 1.0))
+	hint.add_theme_color_override("font_color", Color(0.86, 0.9, 0.88))
 
 	var start_button := Button.new()
 	start_button.text = "Start"
@@ -542,16 +704,16 @@ func _build_loading_screen() -> Control:
 	_full_rect(screen)
 
 	var background := ColorRect.new()
-	background.color = Color(0.0, 0.0, 0.003, 1.0)
+	background.color = Color(0.34, 0.46, 0.54, 1.0)
 	_full_rect(background)
 	screen.add_child(background)
 
 	var label := Label.new()
-	label.text = "The Qoob is tuning the path..."
+	label.text = "The concrete sky is waking..."
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 30)
-	label.add_theme_color_override("font_color", Color(0.92, 0.98, 1.0))
+	label.add_theme_color_override("font_color", Color(0.92, 0.95, 0.94))
 	_full_rect(label)
 	screen.add_child(label)
 
@@ -607,7 +769,7 @@ func _build_game_over_screen() -> Control:
 	_full_rect(screen)
 
 	var background := ColorRect.new()
-	background.color = Color(0.006, 0.0, 0.012, 0.93)
+	background.color = Color(0.05, 0.065, 0.075, 0.94)
 	_full_rect(background)
 	screen.add_child(background)
 
@@ -976,10 +1138,10 @@ func _make_qoob_shader_material() -> ShaderMaterial:
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
-uniform vec4 base_color : source_color = vec4(0.002, 0.002, 0.006, 1.0);
-uniform vec4 vein_color : source_color = vec4(0.92, 0.98, 1.0, 1.0);
-uniform vec4 blue_fringe : source_color = vec4(0.08, 0.35, 1.0, 1.0);
-uniform vec4 red_fringe : source_color = vec4(1.0, 0.22, 0.05, 1.0);
+uniform vec4 base_color : source_color = vec4(0.018, 0.024, 0.028, 1.0);
+uniform vec4 vein_color : source_color = vec4(0.12, 0.55, 0.92, 1.0);
+uniform vec4 blue_fringe : source_color = vec4(0.08, 0.36, 0.72, 1.0);
+uniform vec4 red_fringe : source_color = vec4(0.58, 0.18, 0.08, 1.0);
 uniform float pulse = 0.0;
 
 void fragment() {
@@ -993,9 +1155,9 @@ void fragment() {
 	vec3 color = mix(base_color.rgb, vein_color.rgb, veil * 0.65 + pulse * 0.08);
 	color = mix(color, fringe, diagonal * 0.22);
 	ALBEDO = color;
-	EMISSION = vein_color.rgb * (0.75 + pulse * 3.2 + veil * 4.0) + fringe * diagonal * 1.7;
-	ROUGHNESS = 0.2;
-	METALLIC = 0.25;
+	EMISSION = vein_color.rgb * (0.18 + pulse * 0.85 + veil * 1.15) + fringe * diagonal * 0.42;
+	ROUGHNESS = 0.72;
+	METALLIC = 0.06;
 }
 """
 
@@ -1005,14 +1167,39 @@ void fragment() {
 	return material
 
 
-func _make_ground_material() -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.002, 0.002, 0.004)
-	material.roughness = 0.64
-	material.metallic = 0.16
-	material.emission_enabled = true
-	material.emission = Color(0.004, 0.006, 0.009)
-	material.emission_energy_multiplier = 0.12
+func _make_ground_material() -> Material:
+	return _make_concrete_material(Color(0.58, 0.62, 0.61), 1.0)
+
+
+func _make_concrete_material(base: Color, alpha: float = 1.0) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode cull_back, diffuse_burley, specular_schlick_ggx;
+
+uniform vec4 base_color : source_color = vec4(0.55, 0.58, 0.57, 1.0);
+uniform float stain_strength = 0.22;
+
+void fragment() {
+	vec2 uv = UV * 5.0;
+	float grain_a = fract(sin(dot(floor(uv * 18.0), vec2(12.9898, 78.233))) * 43758.5453);
+	float grain_b = fract(sin(dot(floor(uv * 47.0), vec2(39.346, 11.135))) * 17312.123);
+	float seam_x = smoothstep(0.965, 0.99, abs(sin(UV.x * 18.8495)));
+	float seam_y = smoothstep(0.965, 0.99, abs(sin(UV.y * 18.8495)));
+	float edge_dirty = max(seam_x, seam_y);
+	vec3 concrete = base_color.rgb * (0.82 + grain_a * 0.18);
+	concrete = mix(concrete, concrete * 0.55, edge_dirty * stain_strength);
+	concrete += (grain_b - 0.5) * 0.045;
+	ALBEDO = concrete;
+	ROUGHNESS = 0.96;
+	METALLIC = 0.0;
+	AO = 0.78 - edge_dirty * 0.18;
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("base_color", Color(base.r, base.g, base.b, alpha))
+	material.set_shader_parameter("stain_strength", 0.28)
 	return material
 
 
