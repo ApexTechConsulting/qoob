@@ -1,0 +1,25 @@
+; Engine configuration file.
+; Editing this file directly is supported, but using the editor UI is safer.
+
+config_version=5
+
+[application]
+
+config/name="Qoob"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://assets/art/icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/mode=2
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+environment/defaults/default_clear_color=Color(0.0156863, 0.0117647, 0.027451, 1)
+
